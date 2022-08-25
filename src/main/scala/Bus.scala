@@ -3,6 +3,7 @@ package lila.ws
 import akka.actor.typed.ActorRef
 
 import ipc.ClientMsg
+import org.joda.time.LocalTime
 
 object Bus:
 
@@ -10,7 +11,15 @@ object Bus:
 
   private val impl = new util.EventBus[ClientMsg, Chan, ActorRef[ClientMsg]](
     initialCapacity = 65535,
-    publish = (actor, event) => actor ! event
+    publish = (actor, event) => {
+      if (
+        actor.toString != channel.mlat 
+        && actor.toString != channel.all
+        && !event.toString.startsWith("Broom"))
+        s"Bus.impl.parse [$actor] $event".pp(s"${LocalTime.now()}")
+
+      actor ! event
+    }
   )
 
   def subscribe   = impl.subscribe

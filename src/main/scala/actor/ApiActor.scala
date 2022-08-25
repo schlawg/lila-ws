@@ -4,6 +4,7 @@ import akka.actor.typed.{ Behavior, PostStop }
 import akka.actor.typed.scaladsl.{ ActorContext, Behaviors }
 
 import ipc.*
+import org.joda.time.LocalTime
 
 object ApiActor:
 
@@ -23,6 +24,7 @@ object ApiActor:
   private def apply(deps: Deps): Behavior[ClientMsg] =
     Behaviors
       .receive[ClientMsg] { (_, msg) =>
+        s"ApiActor.apply${msg}".pp(s"${LocalTime.now()}")
         msg match
 
           case ClientCtrl.ApiDisconnect => Behaviors.stopped

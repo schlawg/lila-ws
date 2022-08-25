@@ -5,6 +5,7 @@ import chess.format.{ FEN, Uci }
 import chess.variant.Variant
 import chess.{ Centis, Color, Pos }
 import lila.ws.util.JsExtension.*
+import org.joda.time.{DateTime, LocalTime}
 import play.api.libs.json.*
 import scala.util.{ Success, Try }
 
@@ -120,6 +121,7 @@ object ClientOut:
   def parse(str: String): Try[ClientOut] =
     if (str == "null" || str == """{"t":"p"}""") emptyPing
     else
+      s"ClientOut.parse${str}".pp(s"${LocalTime.now()}")
       Try(Json parse str) map {
         case o: JsObject =>
           o str "t" flatMap {

@@ -19,7 +19,7 @@ scalaVersion := "3.1.3"
 
 libraryDependencies += "org.reactivemongo" %% "reactivemongo"          % reactivemongoVersion
 libraryDependencies += "org.reactivemongo" %% "reactivemongo-bson-api" % reactivemongoVersion
-libraryDependencies += "org.reactivemongo" % "reactivemongo-shaded-native" % s"$reactivemongoVersion-$os-x86-64"
+//libraryDependencies += "org.reactivemongo" % "reactivemongo-shaded-native" % s"$reactivemongoVersion-$os-x86-64"
 libraryDependencies += "io.lettuce" % "lettuce-core"                 % "6.2.0.RELEASE"
 libraryDependencies += "io.netty"   % "netty-handler"                % nettyVersion
 libraryDependencies += "io.netty"   % "netty-codec-http"             % nettyVersion

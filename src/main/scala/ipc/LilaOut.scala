@@ -2,6 +2,7 @@ package lila.ws
 package ipc
 
 import chess.Color
+import org.joda.time.LocalTime
 
 sealed trait LilaOut
 
@@ -112,8 +113,8 @@ object LilaOut:
 
   def read(str: String): Option[LilaOut] =
     val parts = str.split(" ", 2)
-    val args  = parts.lift(1) getOrElse ""
-    parts(0) match
+    val args = parts.lift(1) getOrElse ""
+    val hackOut = parts(0) match
 
       case "mlat" => args.toDoubleOption map Mlat.apply
 
@@ -326,7 +327,8 @@ object LilaOut:
       case "r/versioning-ready" => Some(VersioningReady)
 
       case _ => None
-
+    if (hackOut.isDefined && !raw"((Pong)|(Mlat)|(RoomStop)).*".r.matches(hackOut.get.toString)) s"LilaOut.read ${hackOut.get}".pp(LocalTime.now().toString)
+    hackOut
   def commas(str: String): Array[String]            = if (str == "-") Array.empty else str split ','
   def boolean(str: String): Boolean                 = str == "+"
   def optional(str: String): Option[String]         = if (str == "-") None else Some(str)

@@ -12,6 +12,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler
 import io.netty.util.concurrent.{ Future as NettyFuture, GenericFutureListener }
 import scala.concurrent.{ ExecutionContext, Future, Promise }
 import io.netty.buffer.Unpooled
+import org.joda.time.LocalTime
 
 final private class ProtocolHandler(
     clients: ActorRef[Clients.Control]
@@ -51,6 +52,13 @@ final private class ProtocolHandler(
 
   private def emitToChannel(channel: Channel): ClientEmit =
     in => {
+      if (in != ipc.ClientIn.RoundPingFrameNoFlush
+        && in != ipc.ClientIn.Mlat
+        && in != ipc.ClientIn.Pong
+        && in != ipc.ClientIn.LobbyPong
+        && in != ipc.ClientIn.LobbyNonIdle
+        && !in.toString.startsWith("LobbyPong"))
+        s"ProtocolHandler.emitToChannel '$channel' $in".pp(LocalTime.now().toString);
       if (in == ipc.ClientIn.Disconnect) terminateConnection(channel)
       else if (in == ipc.ClientIn.RoundPingFrameNoFlush)
         channel.write {

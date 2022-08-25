@@ -5,6 +5,8 @@ import akka.actor.typed.scaladsl.{ ActorContext, Behaviors }
 import com.typesafe.scalalogging.Logger
 import ipc.*
 import util.Util.nowSeconds
+import org.joda.time.LocalTime
+
 
 object ClientActor:
 
@@ -55,7 +57,7 @@ object ClientActor:
   ): State =
 
     import deps.*
-
+    if (!msg.toString.startsWith("Ping")) s"ClientActor.globalReceive $msg".pp(LocalTime.now().toString)
     msg match
 
       case msg: ClientOut.Ping =>
