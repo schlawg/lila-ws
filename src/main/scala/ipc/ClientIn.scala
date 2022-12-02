@@ -57,11 +57,11 @@ object ClientIn:
     val version: SocketVersion
 
   case class Versioned(json: JsonString, version: SocketVersion, troll: IsTroll) extends HasVersion:
-    lazy val full = Payload(JsonString(s"""{"v":$version,${json.value drop 1}"""))
+    lazy val full = Payload(JsonString(s"""{"v":$version,${json.jsonString drop 1}"""))
     lazy val skip = Payload(JsonString(s"""{"v":$version}"""))
 
   case class Payload(json: JsonString) extends ClientIn:
-    def write = json.value
+    def write = json.jsonString
   def payload(js: JsValue)                 = Payload(JsonString(Json stringify js))
   def payload(tpe: String, js: JsonString) = Payload(JsonString(cliMsg(tpe, js)))
 
@@ -195,10 +195,10 @@ object ClientIn:
     val write = "" // not actually sent
   def roundTourStanding(data: JsonString) = payload("tourStanding", data)
 
-  case class Palantir(userIds: Iterable[User.ID]) extends ClientIn:
+  case class Palantir(userIds: Iterable[UserId]) extends ClientIn:
     def write = cliMsg("palantir", userIds)
 
-  case class MsgType(orig: User.ID) extends ClientIn:
+  case class MsgType(orig: UserId) extends ClientIn:
     def write = cliMsg("msgType", orig)
 
   object following:
@@ -223,11 +223,11 @@ object ClientIn:
         }
 
     abstract class Event(key: String) extends ClientIn:
-      def user: User.ID
+      def user: UserId
       def write = cliMsg(s"following_$key", user)
-    case class Leaves(user: User.ID)         extends Event("leaves")
-    case class Playing(user: User.ID)        extends Event("playing")
-    case class StoppedPlaying(user: User.ID) extends Event("stopped_playing")
+    case class Leaves(user: UserId)         extends Event("leaves")
+    case class Playing(user: UserId)        extends Event("playing")
+    case class StoppedPlaying(user: UserId) extends Event("stopped_playing")
 
   case class StormKey(signed: String) extends ClientIn:
     def write = cliMsg("sk1", signed)
@@ -241,9 +241,9 @@ object ClientIn:
       "t" -> t,
       "d" -> data
     )
-  private def cliMsg(t: String, data: JsonString): String = s"""{"t":"$t","d":${data.value}}"""
+  private def cliMsg(t: String, data: JsonString): String = s"""{"t":"$t","d":${data.jsonString}}"""
   private def cliMsg(t: String, data: JsonString, version: SocketVersion): String =
-    s"""{"t":"$t","v":$version,"d":${data.value}}"""
+    s"""{"t":"$t","v":$version,"d":${data.jsonString}}"""
   private def cliMsg(t: String, int: Int): String      = s"""{"t":"$t","d":$int}"""
   private def cliMsg(t: String, bool: Boolean): String = s"""{"t":"$t","d":$bool}"""
   private def cliMsg(t: String): String                = s"""{"t":"$t"}"""

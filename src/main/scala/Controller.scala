@@ -24,7 +24,7 @@ final class Controller(
       Future successful siteEndpoint(req, sri, user)
     }
 
-  private def siteEndpoint(req: RequestHeader, sri: Sri, user: Option[User]) =
+  private def siteEndpoint(req: RequestHeader, sri: Sri, user: Option[UserId]) =
     endpoint(
       name = "site",
       behavior = (emit: ClientEmit) =>
@@ -108,7 +108,7 @@ final class Controller(
             name = "round/watch",
             behavior = (emit: ClientEmit) =>
               RoundClientActor
-                .start(RoomActor.State(RoomId(id), isTroll), None, userTv, fromVersion(req)) {
+                .start(RoomActor.State(RoomId.ofGame(id), isTroll), None, userTv, fromVersion(req)) {
                   Deps(emit, Req(req, sri, user), services)
                 },
             credits = 50,
@@ -126,7 +126,7 @@ final class Controller(
             name = "round/play",
             behavior = (emit: ClientEmit) =>
               RoundClientActor.start(
-                RoomActor.State(RoomId(id.gameId), isTroll),
+                RoomActor.State(RoomId.ofPlayer(id), isTroll),
                 Some(player),
                 None,
                 fromVersion(req)
@@ -143,7 +143,7 @@ final class Controller(
       mongo challenger id map {
         _ map {
           case Challenge.Challenger.Anon(secret) => Auth sidFromReq req contains secret
-          case Challenge.Challenger.User(userId) => user.exists(_.id == userId)
+          case Challenge.Challenger.User(userId) => user.contains(userId)
           case Challenge.Challenger.Open         => false
         }
       } map {
@@ -153,7 +153,7 @@ final class Controller(
             name = "challenge",
             behavior = (emit: ClientEmit) =>
               ChallengeClientActor
-                .start(RoomActor.State(RoomId(id), IsTroll(false)), owner, fromVersion(req)) {
+                .start(RoomActor.State(RoomId.ofChallenge(id), IsTroll(false)), owner, fromVersion(req)) {
                   Deps(emit, Req(req, sri, user), services)
                 },
             credits = 50,
@@ -200,7 +200,7 @@ final class Controller(
     WebSocket(req) { sri => user =>
       Future successful {
         user.match {
-          case Some(u) => Option(Racer.PlayerId.User(u.id))
+          case Some(u) => Option(Racer.PlayerId.User(u))
           case None    => Auth.sidFromReq(req) map Racer.PlayerId.Anon.apply
         }.match
           case None => notFound
@@ -228,7 +228,7 @@ final class Controller(
       interval = 20.seconds
     )
 
-  private def WebSocket(req: RequestHeader)(f: Sri => Option[User] => Response): Response =
+  private def WebSocket(req: RequestHeader)(f: Sri => Option[UserId] => Response): Response =
     CSRF.check(req) {
       ValidSri(req) { sri =>
         auth(req) flatMap f(sri)

@@ -53,8 +53,8 @@ final class CrowdJson(
       .expireAfterWrite(20.minutes)
       .buildAsyncFuture(mongo.studyExists)
 
-  private def keepOnlyStudyMembers(crowd: RoomCrowd.Output): Future[Iterable[User.ID]] =
-    isStudyCache.get(crowd.roomId.value) flatMap {
+  private def keepOnlyStudyMembers(crowd: RoomCrowd.Output): Future[Iterable[UserId]] =
+    isStudyCache.get(crowd.roomId.roomId) flatMap {
       case false => Future successful Nil
-      case true  => mongo.studyMembers(crowd.roomId.value) map crowd.users.toSet.intersect
+      case true  => mongo.studyMembers(crowd.roomId.roomId) map crowd.users.toSet.intersect
     }
