@@ -4,6 +4,7 @@ import akka.actor.typed.ActorRef
 import com.typesafe.scalalogging.Logger
 import ipc.*
 import scala.concurrent.{ ExecutionContext, Promise }
+import ornicar.scalalib.ThreadLocalRandom
 
 final class LilaHandler(
     lila: Lila,
@@ -26,6 +27,7 @@ final class LilaHandler(
     case Mlat(millis)            => publish(_.mlat, ClientIn.Mlat(millis))
     case TellFlag(flag, payload) => publish(_ flag flag, ClientIn.Payload(payload))
     case TellSri(sri, payload)   => publish(_ sri sri, ClientIn.Payload(payload))
+    case TellSris(sris, payload) => sris foreach { sri => publish(_ sri sri, ClientIn.Payload(payload)) }
     case TellAll(payload)        => publish(_.all, ClientIn.Payload(payload))
 
     case TellUsers(us, json)  => users.tellMany(us, ClientIn.Payload(json))
@@ -64,15 +66,11 @@ final class LilaHandler(
     case TellLobbyUsers(us, json) =>
       users.tellMany(us, ClientIn.onlyFor(_.Lobby, ClientIn.Payload(json)))
 
-    case TellLobby(payload) => publish(_.lobby, ClientIn.Payload(payload))
-    case TellLobbyActive(payload) =>
-      publish(_.lobby, ClientIn.LobbyNonIdle(ClientIn.Payload(payload)))
-    case TellSris(sris, payload) =>
-      sris foreach { sri =>
-        publish(_ sri sri, ClientIn.Payload(payload))
-      }
+    case TellLobby(payload)       => publish(_.lobby, ClientIn.Payload(payload))
+    case TellLobbyActive(payload) => publish(_.lobby, ClientIn.LobbyNonIdle(ClientIn.Payload(payload)))
+    case TellSris(sris, payload)  => sris foreach { sri => publish(_ sri sri, ClientIn.Payload(payload)) }
     case LobbyPairings(pairings) =>
-      pairings.foreach { case (sri, fullId) => publish(_ sri sri, ClientIn.LobbyPairing(fullId)) }
+      pairings.foreach { (sri, fullId) => publish(_ sri sri, ClientIn.LobbyPairing(fullId)) }
 
     case site: SiteOut => siteHandler(site)
     case msg           => logger.warn(s"Unhandled lobby: $msg")
@@ -93,17 +91,17 @@ final class LilaHandler(
 
   private val tourHandler: Emit[LilaOut] =
     case GetWaitingUsers(roomId, name) =>
-      mongo.tournamentActiveUsers(roomId.roomId) zip mongo.tournamentPlayingUsers(roomId.roomId) foreach {
-        case (active, playing) =>
+      mongo.tournamentActiveUsers(roomId into Tour.Id) zip
+        mongo.tournamentPlayingUsers(roomId into Tour.Id) foreach { case (active, playing) =>
           val present   = roomCrowd getUsers roomId
           val standby   = active diff playing
           val allAbsent = standby diff present
           lila.emit.tour(LilaIn.WaitingUsers(roomId, present intersect standby))
           val absent =
-            if (allAbsent.sizeIs > 100) util.Util.threadLocalRandom.shuffle(allAbsent) take 80
+            if (allAbsent.sizeIs > 100) ThreadLocalRandom.shuffle(allAbsent) take 80
             else allAbsent
-          if (absent.nonEmpty) users.tellMany(absent, ClientIn.TourReminder(roomId.roomId, name))
-      }
+          if (absent.nonEmpty) users.tellMany(absent, ClientIn.TourReminder(roomId into Tour.Id, name))
+        }
     case LilaBoot => roomBoot(_.idFilter.tour, lila.emit.tour)
     case msg      => roomHandler(msg)
 
@@ -116,9 +114,7 @@ final class LilaHandler(
   private val roundHandler: Emit[LilaOut] =
     import scala.language.implicitConversions
     given Conversion[Game.Id, RoomId] with
-      def apply(id: Game.Id): RoomId = RoomId.ofGame(id)
-    given Conversion[RoomId, Game.Id] with
-      def apply(roomId: RoomId): Game.Id = Game.Id(roomId.roomId)
+      def apply(id: Game.Id): RoomId = id.into(RoomId)
 
     {
       case RoundVersion(gameId, version, flags, tpe, data) =>
@@ -137,13 +133,13 @@ final class LilaHandler(
         publish(_ tourStanding tourId, ClientIn.roundTourStanding(data))
       case o: TvSelect => Tv select o
       case RoomStop(roomId) =>
-        History.round.stop(roomId)
+        History.round.stop(Game.Id(roomId.value))
         publish(_ room roomId, ClientCtrl.Disconnect)
       case RoundBotOnline(gameId, color, v) => roundCrowd.botOnline(gameId, color, v)
       case GameStart(users) =>
         users.foreach { u =>
           friendList.startPlaying(u)
-          publish(_ userTv UserTv.from(u), ClientIn.Resync)
+          publish(_ userTv u.into(UserTv), ClientIn.Resync)
         }
       case GameFinish(gameId, winner, users) =>
         users foreach friendList.stopPlaying
@@ -162,7 +158,7 @@ final class LilaHandler(
     }
 
   private val racerHandler: Emit[LilaOut] =
-    case RacerState(raceId, data) => publish(_ room RoomId(raceId), ClientIn.racerState(data))
+    case RacerState(raceId, data) => publish(_ room raceId.into(RoomId), ClientIn.racerState(data))
     case msg                      => roomHandler(msg)
 
   private def tellRoomVersion(roomId: RoomId, version: SocketVersion, troll: IsTroll, payload: JsonString) =

@@ -1,12 +1,11 @@
 package lila.ws
 package ipc
 
-import chess.Color
-import chess.format.UciCharPair
-import chess.opening.FullOpening
+import chess.{ Color, Ply }
+import chess.format.{ EpdFen, Uci, UciCharPair }
+import chess.opening.Opening
 import chess.variant.Crazyhouse
 import lila.ws.Position
-import lila.ws.util.JsExtension.*
 import play.api.libs.json.*
 
 sealed trait ClientIn extends ClientMsg:
@@ -57,11 +56,11 @@ object ClientIn:
     val version: SocketVersion
 
   case class Versioned(json: JsonString, version: SocketVersion, troll: IsTroll) extends HasVersion:
-    lazy val full = Payload(JsonString(s"""{"v":$version,${json.jsonString drop 1}"""))
+    lazy val full = Payload(JsonString(s"""{"v":$version,${json.value drop 1}"""))
     lazy val skip = Payload(JsonString(s"""{"v":$version}"""))
 
   case class Payload(json: JsonString) extends ClientIn:
-    def write = json.jsonString
+    def write = json.value
   def payload(js: JsValue)                 = Payload(JsonString(Json stringify js))
   def payload(tpe: String, js: JsonString) = Payload(JsonString(cliMsg(tpe, js)))
 
@@ -92,7 +91,7 @@ object ClientIn:
   def onlyFor(select: OnlyFor.Endpoint.type => OnlyFor.Endpoint, payload: Payload) =
     OnlyFor(select(OnlyFor.Endpoint), payload)
 
-  case class TourReminder(tourId: Tour.ID, tourName: String) extends ClientIn:
+  case class TourReminder(tourId: Tour.Id, tourName: String) extends ClientIn:
     lazy val write = cliMsg(
       "tournamentReminder",
       Json.obj(
@@ -103,7 +102,7 @@ object ClientIn:
 
   def tvSelect(data: JsonString) = payload("tvSelect", data)
 
-  case class Opening(path: Path, opening: FullOpening) extends ClientIn:
+  case class OpeningMsg(path: Path, opening: Opening) extends ClientIn:
     def write =
       cliMsg(
         "opening",
@@ -119,12 +118,12 @@ object ClientIn:
   case class Node(
       path: Path,
       id: UciCharPair,
-      ply: Int,
-      move: chess.format.Uci.WithSan,
-      fen: chess.format.FEN,
+      ply: Ply,
+      move: Uci.WithSan,
+      fen: EpdFen,
       check: Boolean,
       dests: Map[chess.Pos, List[chess.Pos]],
-      opening: Option[chess.opening.FullOpening],
+      opening: Option[Opening],
       drops: Option[List[chess.Pos]],
       crazyData: Option[Crazyhouse.Data],
       chapterId: Option[ChapterId]
@@ -158,7 +157,7 @@ object ClientIn:
   case class Dests(
       path: Path,
       dests: String,
-      opening: Option[chess.opening.FullOpening],
+      opening: Option[Opening],
       chapterId: Option[ChapterId]
   ) extends ClientIn:
     def write =
@@ -195,10 +194,10 @@ object ClientIn:
     val write = "" // not actually sent
   def roundTourStanding(data: JsonString) = payload("tourStanding", data)
 
-  case class Palantir(userIds: Iterable[UserId]) extends ClientIn:
+  case class Palantir(userIds: Iterable[User.Id]) extends ClientIn:
     def write = cliMsg("palantir", userIds)
 
-  case class MsgType(orig: UserId) extends ClientIn:
+  case class MsgType(orig: User.Id) extends ClientIn:
     def write = cliMsg("msgType", orig)
 
   object following:
@@ -209,7 +208,7 @@ object ClientIn:
           "t"       -> "following_onlines",
           "d"       -> users.map(_.data.titleName),
           "playing" -> users.collect { case u if u.meta.playing => u.id },
-          "patrons" -> users.collect { case u if u.data.patron => u.id }
+          "patrons" -> users.collect { case u if u.data.patron.yes => u.id }
         )
     case class Enters(user: FriendList.UserView) extends ClientIn:
       // We use 'd' for backward compatibility with the mobile client
@@ -218,16 +217,16 @@ object ClientIn:
           "t" -> "following_enters",
           "d" -> user.data.titleName
         ) ++ {
-          if (user.data.patron) Json.obj("patron" -> true)
+          if (user.data.patron.yes) Json.obj("patron" -> true)
           else Json.obj()
         }
 
     abstract class Event(key: String) extends ClientIn:
-      def user: UserId
+      def user: User.Id
       def write = cliMsg(s"following_$key", user)
-    case class Leaves(user: UserId)         extends Event("leaves")
-    case class Playing(user: UserId)        extends Event("playing")
-    case class StoppedPlaying(user: UserId) extends Event("stopped_playing")
+    case class Leaves(user: User.Id)         extends Event("leaves")
+    case class Playing(user: User.Id)        extends Event("playing")
+    case class StoppedPlaying(user: User.Id) extends Event("stopped_playing")
 
   case class StormKey(signed: String) extends ClientIn:
     def write = cliMsg("sk1", signed)
@@ -241,9 +240,9 @@ object ClientIn:
       "t" -> t,
       "d" -> data
     )
-  private def cliMsg(t: String, data: JsonString): String = s"""{"t":"$t","d":${data.jsonString}}"""
+  private def cliMsg(t: String, data: JsonString): String = s"""{"t":"$t","d":${data.value}}"""
   private def cliMsg(t: String, data: JsonString, version: SocketVersion): String =
-    s"""{"t":"$t","v":$version,"d":${data.jsonString}}"""
+    s"""{"t":"$t","v":$version,"d":${data.value}}"""
   private def cliMsg(t: String, int: Int): String      = s"""{"t":"$t","d":$int}"""
   private def cliMsg(t: String, bool: Boolean): String = s"""{"t":"$t","d":$bool}"""
   private def cliMsg(t: String): String                = s"""{"t":"$t"}"""

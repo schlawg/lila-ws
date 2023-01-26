@@ -12,7 +12,7 @@ final class Controller(
     mongo: Mongo,
     auth: Auth,
     services: Services
-)(using ec: ExecutionContext):
+)(using ExecutionContext):
 
   import Controller.*
   import ClientActor.{ Deps, Req }
@@ -24,7 +24,7 @@ final class Controller(
       Future successful siteEndpoint(req, sri, user)
     }
 
-  private def siteEndpoint(req: RequestHeader, sri: Sri, user: Option[UserId]) =
+  private def siteEndpoint(req: RequestHeader, sri: Sri, user: Option[User.Id]) =
     endpoint(
       name = "site",
       behavior = (emit: ClientEmit) =>
@@ -48,14 +48,14 @@ final class Controller(
       )
     }
 
-  def simul(id: Simul.ID, req: RequestHeader) =
+  def simul(id: Simul.Id, req: RequestHeader) =
     WebSocket(req) { sri => user =>
       mongo.simulExists(id) zip mongo.troll.is(user) map {
         case (true, isTroll) =>
           endpoint(
             name = "simul",
             behavior = (emit: ClientEmit) =>
-              SimulClientActor.start(RoomActor.State(RoomId(id), isTroll), fromVersion(req)) {
+              SimulClientActor.start(RoomActor.State(id.into(RoomId), isTroll), fromVersion(req)) {
                 Deps(emit, Req(req, sri, user), services)
               },
             credits = 30,
@@ -65,14 +65,14 @@ final class Controller(
       }
     }
 
-  def tournament(id: Tour.ID, req: RequestHeader) =
+  def tournament(id: Tour.Id, req: RequestHeader) =
     WebSocket(req) { sri => user =>
       mongo.tourExists(id) zip mongo.troll.is(user) map {
         case (true, isTroll) =>
           endpoint(
             name = "tour",
             behavior = (emit: ClientEmit) =>
-              TourClientActor.start(RoomActor.State(RoomId(id), isTroll), fromVersion(req)) {
+              TourClientActor.start(RoomActor.State(id into RoomId, isTroll), fromVersion(req)) {
                 Deps(emit, Req(req, sri, user), services)
               },
             credits = 30,
@@ -82,14 +82,14 @@ final class Controller(
       }
     }
 
-  def study(id: Study.ID, req: RequestHeader) =
+  def study(id: Study.Id, req: RequestHeader) =
     WebSocket(req) { sri => user =>
       mongo.studyExistsFor(id, user) zip mongo.troll.is(user) map {
         case (true, isTroll) =>
           endpoint(
             name = "study",
             behavior = (emit: ClientEmit) =>
-              StudyClientActor.start(RoomActor.State(RoomId(id), isTroll), fromVersion(req)) {
+              StudyClientActor.start(RoomActor.State(id into RoomId, isTroll), fromVersion(req)) {
                 Deps(emit, Req(req, sri, user), services)
               },
             credits = 60,
@@ -103,12 +103,12 @@ final class Controller(
     WebSocket(req) { sri => user =>
       mongo.gameExists(id) zip mongo.troll.is(user) map {
         case (true, isTroll) =>
-          val userTv = req queryParameter "userTv" map UserTv.apply
+          val userTv = UserTv.from(req queryParameter "userTv")
           endpoint(
             name = "round/watch",
             behavior = (emit: ClientEmit) =>
               RoundClientActor
-                .start(RoomActor.State(RoomId.ofGame(id), isTroll), None, userTv, fromVersion(req)) {
+                .start(RoomActor.State(id.into(RoomId), isTroll), None, userTv, fromVersion(req)) {
                   Deps(emit, Req(req, sri, user), services)
                 },
             credits = 50,
@@ -153,7 +153,7 @@ final class Controller(
             name = "challenge",
             behavior = (emit: ClientEmit) =>
               ChallengeClientActor
-                .start(RoomActor.State(RoomId.ofChallenge(id), IsTroll(false)), owner, fromVersion(req)) {
+                .start(RoomActor.State(id into RoomId, IsTroll(false)), owner, fromVersion(req)) {
                   Deps(emit, Req(req, sri, user), services)
                 },
             credits = 50,
@@ -162,14 +162,14 @@ final class Controller(
       }
     }
 
-  def team(id: Team.ID, req: RequestHeader) =
+  def team(id: Team.Id, req: RequestHeader) =
     WebSocket(req) { sri => user =>
       mongo.teamView(id, user) zip mongo.troll.is(user) map { case (view, isTroll) =>
-        if (view.exists(_.hasChat))
+        if (view.exists(_.yes))
           endpoint(
             name = "team",
             behavior = (emit: ClientEmit) =>
-              TeamClientActor.start(RoomActor.State(RoomId(id), isTroll), fromVersion(req)) {
+              TeamClientActor.start(RoomActor.State(id into RoomId, isTroll), fromVersion(req)) {
                 Deps(emit, Req(req, sri, user), services)
               },
             credits = 30,
@@ -179,14 +179,14 @@ final class Controller(
       }
     }
 
-  def swiss(id: Swiss.ID, req: RequestHeader) =
+  def swiss(id: Swiss.Id, req: RequestHeader) =
     WebSocket(req) { sri => user =>
       mongo.swissExists(id) zip mongo.troll.is(user) map {
         case (true, isTroll) =>
           endpoint(
             name = "swiss",
             behavior = (emit: ClientEmit) =>
-              SwissClientActor.start(RoomActor.State(RoomId(id), isTroll), fromVersion(req)) {
+              SwissClientActor.start(RoomActor.State(id into RoomId, isTroll), fromVersion(req)) {
                 Deps(emit, Req(req, sri, user), services)
               },
             credits = 30,
@@ -196,7 +196,7 @@ final class Controller(
       }
     }
 
-  def racer(id: Swiss.ID, req: RequestHeader) =
+  def racer(id: Racer.Id, req: RequestHeader) =
     WebSocket(req) { sri => user =>
       Future successful {
         user.match {
@@ -208,7 +208,7 @@ final class Controller(
             endpoint(
               name = "racer",
               behavior = (emit: ClientEmit) =>
-                RacerClientActor.start(RoomActor.State(RoomId(id), IsTroll(false)), pid) {
+                RacerClientActor.start(RoomActor.State(id into RoomId, IsTroll(false)), pid) {
                   Deps(emit, Req(req, sri, user), services)
                 },
               credits = 30,
@@ -228,7 +228,7 @@ final class Controller(
       interval = 20.seconds
     )
 
-  private def WebSocket(req: RequestHeader)(f: Sri => Option[UserId] => Response): Response =
+  private def WebSocket(req: RequestHeader)(f: Sri => Option[User.Id] => Response): Response =
     CSRF.check(req) {
       ValidSri(req) { sri =>
         auth(req) flatMap f(sri)
@@ -261,7 +261,7 @@ final class Controller(
   private def notFound = Left(HttpResponseStatus.NOT_FOUND)
 
   private def fromVersion(req: RequestHeader): Option[SocketVersion] =
-    req queryParameter "v" flatMap (_.toIntOption) map SocketVersion.apply
+    SocketVersion.from(req queryParameter "v" flatMap (_.toIntOption))
 
 object Controller:
 

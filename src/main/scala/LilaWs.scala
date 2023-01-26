@@ -7,9 +7,7 @@ import scala.annotation.nowarn
 import scala.concurrent.duration.*
 import scala.concurrent.ExecutionContext
 
-import util.Util.nowSeconds
-
-object Boot extends App:
+object LilaWs extends App:
 
   lazy val config: Config             = ConfigFactory.load
   lazy val clientSystem: ClientSystem = ActorSystem(Clients.behavior, "clients")
@@ -49,7 +47,7 @@ final class LilaWsServer(
     lobby: Lobby,
     monitor: Monitor,
     scheduler: Scheduler
-)(using ec: ExecutionContext):
+)(using ExecutionContext):
 
   def start(): Unit =
 

@@ -4,9 +4,6 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.{ ActorContext, Behaviors }
 import com.typesafe.scalalogging.Logger
 import ipc.*
-import util.Util.nowSeconds
-import org.joda.time.LocalTime
-
 
 object ClientActor:
 
@@ -60,7 +57,7 @@ object ClientActor:
   ): State =
 
     import deps.*
-    if (!msg.toString.startsWith("Ping")) s"ClientActor.globalReceive $msg".pp(LocalTime.now().toString)
+    // if (!msg.toString.startsWith("Ping")) s"ClientActor.globalReceive $msg".pp(LocalTime.now().toString)
     msg match
 
       case msg: ClientOut.Ping =>
@@ -146,7 +143,7 @@ object ClientActor:
   private def busChansOf(req: Req) =
     Bus.channel.all :: Bus.channel.sri(req.sri) :: req.flag.map(Bus.channel.flag).toList
 
-  def Req(req: util.RequestHeader, sri: Sri, user: Option[UserId]): Req =
+  def Req(req: util.RequestHeader, sri: Sri, user: Option[User.Id]): Req =
     Req(
       name = req.name,
       ip = req.ip,
@@ -160,9 +157,9 @@ object ClientActor:
       ip: Option[IpAddress],
       sri: Sri,
       flag: Option[Flag],
-      user: Option[UserId]
+      user: Option[User.Id]
   ):
-    override def toString = s"${user.fold("Anon")(_.userId)} $name"
+    override def toString = s"${user.fold("Anon")(_.value)} $name"
 
   case class Deps(
       clientIn: ClientEmit,
