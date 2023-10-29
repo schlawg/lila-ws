@@ -45,7 +45,7 @@ final class EvalCacheApi(mongo: Mongo)(using
               depth = e.depth,
               by = user,
               trust = trust
-            )
+            ).pp
           ) foreach { putTrusted(sri, user, _) }
         }
 
