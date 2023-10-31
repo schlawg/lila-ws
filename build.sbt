@@ -7,8 +7,8 @@ lazy val `lila-ws` = (project in file("."))
 
 resolvers += ("snapshots" at "https://oss.sonatype.org/content/repositories/snapshots")
 
-val os    = if (sys.props.get("os.name").exists(_.startsWith("Mac"))) "osx" else "linux"
-val arch  = if (sys.props.get("os.arch").exists(_.startsWith("aarch64"))) "aarch-64" else "x86-64"
+val os    = if (System.getProperty("os.name").toLowerCase.startsWith("mac")) "osx" else "linux"
+val arch  = if (System.getProperty("os.arch").toLowerCase.startsWith("aarch")) "aarch-64" else "x86-64"
 val arch_ = arch.replace("-", "_")
 
 val pekkoVersion = "1.0.1"
