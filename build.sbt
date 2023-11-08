@@ -7,9 +7,9 @@ lazy val `lila-ws` = (project in file("."))
 
 resolvers += ("snapshots" at "https://oss.sonatype.org/content/repositories/snapshots")
 
-val os    = if (System.getProperty("os.name").toLowerCase.startsWith("mac")) "osx" else "linux"
-val arch  = if (System.getProperty("os.arch").toLowerCase.startsWith("aarch")) "aarch-64" else "x86-64"
-val arch_ = arch.replace("-", "_")
+val os       = if (System.getProperty("os.name").toLowerCase.startsWith("mac")) "osx" else "linux"
+val arch     = if (System.getProperty("os.arch").toLowerCase.startsWith("aarch")) "aarch_64" else "x86_64"
+val dashArch = arch.replace("_", "-")
 
 val pekkoVersion = "1.0.1"
 val kamonVersion = "2.6.5"
@@ -18,12 +18,12 @@ val nettyVersion = "4.1.100.Final"
 scalaVersion := "3.3.1"
 
 libraryDependencies += "org.reactivemongo" %% "reactivemongo" % "1.1.0-RC11" exclude ("org.scala-lang.modules", "scala-java8-compat_2.13")
-libraryDependencies += "org.reactivemongo" % s"reactivemongo-shaded-native-$os-$arch" % "1.1.0-RC11"
-libraryDependencies += "io.lettuce"        % "lettuce-core"                           % "6.2.6.RELEASE"
-libraryDependencies += "io.netty"          % "netty-handler"                          % nettyVersion
-libraryDependencies += "io.netty"          % "netty-codec-http"                       % nettyVersion
-libraryDependencies += "io.netty" % s"netty-transport-native-epoll"  % nettyVersion classifier s"linux-$arch_"
-libraryDependencies += "io.netty" % s"netty-transport-native-kqueue" % nettyVersion classifier s"osx-$arch_"
+libraryDependencies += "org.reactivemongo" % s"reactivemongo-shaded-native-$os-$dashArch" % "1.1.0-RC11"
+libraryDependencies += "io.lettuce"        % "lettuce-core"                               % "6.2.6.RELEASE"
+libraryDependencies += "io.netty"          % "netty-handler"                              % nettyVersion
+libraryDependencies += "io.netty"          % "netty-codec-http"                           % nettyVersion
+libraryDependencies += "io.netty" % s"netty-transport-native-epoll"  % nettyVersion classifier s"linux-$arch"
+libraryDependencies += "io.netty" % s"netty-transport-native-kqueue" % nettyVersion classifier s"osx-$arch"
 libraryDependencies += "com.github.ornicar" %% "scalalib"          % "9.5.5"
 libraryDependencies += "org.lichess"        %% "scalachess"        % "15.6.7"
 libraryDependencies += "org.apache.pekko"   %% "pekko-actor-typed" % pekkoVersion
