@@ -7,38 +7,36 @@ lazy val `lila-ws` = (project in file("."))
 
 resolvers += ("snapshots" at "https://oss.sonatype.org/content/repositories/snapshots")
 
-val akkaVersion  = "2.6.20"
-val kamonVersion = "2.6.5"
-val nettyVersion = "4.1.100.Final"
+val os    = if (sys.props.get("os.name").exists(_.startsWith("Mac"))) "osx" else "linux"
+val arch  = if (sys.props.get("os.arch").exists(_.startsWith("aarch64"))) "aarch-64" else "x86-64"
+val arch_ = arch.replace("-", "_")
 
-val os = sys.props.get("os.name") match {
-  case Some(osName) if osName.toLowerCase.startsWith("mac") => "osx"
-  case _                                                    => "linux"
-}
-val shaded = !System.getProperty("os.arch").toLowerCase.startsWith("aarch")
+val pekkoVersion = "1.0.2"
+val kamonVersion = "2.6.6"
+val nettyVersion = "4.1.101.Final"
 
 scalaVersion := "3.3.1"
 
-libraryDependencies += "org.reactivemongo" %% "reactivemongo" % "1.1.0-RC9"
-libraryDependencies ++= (
-  if (shaded) List("org.reactivemongo" % "reactivemongo-shaded-native" % s"1.1.0-RC6-$os-x86-64")
-  else Nil
-)
-libraryDependencies += "io.lettuce" % "lettuce-core"     % "6.2.6.RELEASE"
-libraryDependencies += "io.netty"   % "netty-handler"    % nettyVersion
-libraryDependencies += "io.netty"   % "netty-codec-http" % nettyVersion
-libraryDependencies += "io.netty" % s"netty-transport-native-epoll" % nettyVersion classifier s"linux-x86_64" classifier s"linux-aarch_64"
-libraryDependencies += "io.netty" % s"netty-transport-native-kqueue" % nettyVersion classifier s"osx-x86_64" classifier s"osx-aarch_64"
-libraryDependencies += "com.github.ornicar" %% "scalalib"         % "9.5.5"
-libraryDependencies += "org.lichess"        %% "scalachess"       % "15.6.7"
-libraryDependencies += "com.typesafe.akka"  %% "akka-actor-typed" % akkaVersion
+libraryDependencies += "org.reactivemongo" %% "reactivemongo" % "1.1.0-RC11" exclude ("org.scala-lang.modules", "scala-java8-compat_2.13")
+libraryDependencies += "org.reactivemongo" % s"reactivemongo-shaded-native-$os-$arch" % "1.1.0-RC11"
+libraryDependencies += "io.lettuce"        % "lettuce-core"                           % "6.3.0.RELEASE"
+libraryDependencies += "io.netty"          % "netty-handler"                          % nettyVersion
+libraryDependencies += "io.netty"          % "netty-codec-http"                       % nettyVersion
+libraryDependencies += "io.netty" % s"netty-transport-native-epoll"  % nettyVersion classifier s"linux-$arch_"
+libraryDependencies += "io.netty" % s"netty-transport-native-kqueue" % nettyVersion classifier s"osx-$arch_"
+libraryDependencies += "com.github.ornicar" %% "scalalib"          % "9.5.5"
+libraryDependencies += "org.lichess"        %% "scalachess"        % "15.6.11"
+libraryDependencies += "org.apache.pekko"   %% "pekko-actor-typed" % pekkoVersion
+
 // libraryDependencies += "com.typesafe.akka"          %% "akka-slf4j"       % akkaVersion
-libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.5"
-libraryDependencies += "com.github.blemale"         %% "scaffeine"       % "5.2.1" % "compile"
-libraryDependencies += "ch.qos.logback"              % "logback-classic" % "1.4.11"
-libraryDependencies += "org.playframework"          %% "play-json"       % "3.0.0"
-libraryDependencies += "io.kamon"                   %% "kamon-core"      % kamonVersion
-libraryDependencies += "io.kamon"                   %% "kamon-influxdb"  % kamonVersion
+// libraryDependencies += "org.apache.pekko"           % "pekko-slf4j_3"     % pekkoVersion
+libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging"    % "3.9.5"
+libraryDependencies += "com.github.blemale"         %% "scaffeine"        % "5.2.1" % "compile"
+libraryDependencies += "ch.qos.logback"              % "logback-classic"  % "1.4.14"
+libraryDependencies += "org.playframework"          %% "play-json"        % "3.0.1"
+libraryDependencies += "io.kamon"                   %% "kamon-core"       % kamonVersion
+libraryDependencies += "io.kamon"                   %% "kamon-influxdb"   % kamonVersion
+libraryDependencies += "io.kamon"                   %% "kamon-prometheus" % kamonVersion
 // libraryDependencies += "io.kamon"                   %% "kamon-system-metrics"         % kamonVersion
 libraryDependencies += "com.softwaremill.macwire" %% "macros" % "2.5.9"     % "provided"
 libraryDependencies += "com.roundeights"          %% "hasher" % "1.3.1"
